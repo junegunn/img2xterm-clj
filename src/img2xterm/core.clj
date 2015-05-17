@@ -1,7 +1,6 @@
 (ns img2xterm.core
   (:require [clojure.java.io :as io]
             [clojure.string :as s]
-            [clojure.reflect :as r]
             [clojure.tools.cli :as cli])
   (:import org.apache.commons.imaging.Imaging
            java.awt.RenderingHints
