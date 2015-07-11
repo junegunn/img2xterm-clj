@@ -80,7 +80,6 @@
 ;; http://en.wikipedia.org/wiki/Block_Elements
 (def ^:private lower-half (char 0x2584))
 (def ^:private upper-half (char 0x2580))
-
 (defn- char-for [top bot]
   (cond
     (= :transparent top bot) " "
@@ -90,7 +89,6 @@
 (defn- cell->str
   [chr top bot
    prev-chr prev-top prev-bot]
-  ;; since the calls assumes lower-half, we need to swap the order
   (let [fun (if (= :transparent bot) #(with-ansi %1 %3 %2) with-ansi)
         same-top (= prev-top top)
         same-bot (= prev-bot bot)]
@@ -132,15 +130,13 @@
   (img->str
     (resize-image
       (Imaging/getBufferedImage (io/as-file filename))
-      max-width
-      max-height)))
+      max-width max-height)))
 
 ;; http://commons.apache.org/proper/commons-imaging/apidocs/index.html
 (defn- as-buffered-image [^java.io.File file]
   (try (Imaging/getBufferedImage file)
        (catch Exception e
-         (printf "** %s: %s\n" (.getName file) (str e))
-         nil)))
+         (printf "** %s: %s\n" (.getName file) (str e)))))
 
 (defn- print-exit [code & lines]
   (doseq [line lines] (println line))
