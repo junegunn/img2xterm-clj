@@ -94,7 +94,7 @@
   (let [fun (if (= :transparent bot) #(with-ansi %1 %3 %2) with-ansi)
         same-top (= prev-top top)
         same-bot (= prev-bot bot)]
-    (if (= prev-chr lower-half)
+    (if (= prev-chr chr)
       (cond
         (and same-top same-bot) chr
         same-top (fun chr bot nil)
