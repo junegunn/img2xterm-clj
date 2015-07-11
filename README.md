@@ -2,6 +2,16 @@
 
 [img2xterm](https://github.com/rossy/img2xterm) rewritten in clojure.
 
+## Prerequisite
+
+- [Leiningen](http://leiningen.org/)
+
+## Build
+
+```
+lein bin
+```
+
 ## Usage
 
 ```
