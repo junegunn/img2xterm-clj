@@ -10,7 +10,7 @@
     (is (= 5 (find-ansi-offset 250))))
 
   (testing "rgb-to-ansi grayscale"
-    (is (= 232 (rgb-to-ansi [0 0 0])))
-    (is (= 234 (rgb-to-ansi [30 30 30])))
-    (is (= 253 (rgb-to-ansi [220 220 220])))
-    (is (= 231 (rgb-to-ansi [250 250 250])))))
+    (is (= 232 (rgba-to-ansi [0 0 0 255])))
+    (is (= 234 (rgba-to-ansi [30 30 30 255])))
+    (is (= 253 (rgba-to-ansi [220 220 220 255])))
+    (is (= 231 (rgba-to-ansi [250 250 250 255])))))
