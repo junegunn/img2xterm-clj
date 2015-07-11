@@ -22,7 +22,7 @@
         orig-type     (.getType img)
         term          (jline.TerminalFactory/get)
         screen-width  (or max-width (.getWidth term))
-        screen-height (* 2 (or max-height (.getHeight term)))
+        screen-height (* 2 (or max-height (dec (.getHeight term))))
         scale         (apply min (map #(double (/ %1 %2))
                                       [screen-width screen-height]
                                       [orig-width orig-height]))
