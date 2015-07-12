@@ -1,6 +1,5 @@
 (ns img2xterm.core
   (:require [clojure.java.io :as io]
-            [clojure.string :as s]
             [clojure.tools.cli :as cli])
   (:import org.apache.commons.imaging.Imaging
            java.awt.RenderingHints
@@ -66,23 +65,25 @@
   [argb]
   (map #(bit-and (bit-shift-right argb %) 0xff) [16 8 0 24]))
 
+(def ^:private ansi-prefix (str (char 27) "["))
 (defn- with-ansi
   "Prepends string with 256-color ANSI code"
   [string & [fg bg]]
-  (str (char 27) "["
-       (s/join
-         ";"
-         (filter some?
-                 [(when fg (if (= :transparent fg) "39" (str "38;5;" fg)))
-                  (when bg (if (= :transparent bg) "49" (str "48;5;" bg)))]))
-       "m" string))
+  (str
+    ansi-prefix
+    (if (and fg (= fg bg) (not= :transparent fg))
+      (str "48;5;" bg)
+      (str (when fg (if (= :transparent fg) "39" (str "38;5;" fg)))
+           (when (and fg bg) ";")
+           (when bg (if (= :transparent bg) "49" (str "48;5;" bg)))))
+    "m" string))
 
 ;; http://en.wikipedia.org/wiki/Block_Elements
 (def ^:private lower-half (char 0x2584))
 (def ^:private upper-half (char 0x2580))
 (defn- char-for [top bot]
   (cond
-    (= :transparent top bot) " "
+    (= top bot) " "
     (= :transparent bot) upper-half
     :else lower-half))
 
