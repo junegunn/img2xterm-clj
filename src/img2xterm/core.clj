@@ -1,5 +1,6 @@
 (ns img2xterm.core
   (:require [clojure.java.io :as io]
+            [clojure.string :as str]
             [clojure.tools.cli :as cli])
   (:import org.apache.commons.imaging.Imaging
            java.awt.RenderingHints
@@ -13,6 +14,7 @@
    ["-h" "--height HEIGHT" "Max height (default: terminal height)"
     :parse-fn #(Integer/parseInt %)
     :validate [#(<= 0 %) "Must be a positive integer"]]
+   ["" "--24" "Enable 24-bit color output"]
    [nil "--help" "Show this message"]])
 
 (defn- resize-image [^BufferedImage img max-width max-height]
@@ -48,17 +50,19 @@
 (def ^:private alpha-threshold 64) ; FIXME
 (defn rgba-to-ansi
   "Converts RGB color to 256-color ANSI code"
-  [rgba]
+  [true-color rgba]
   (let [rgb (butlast rgba)
         a   (last rgba)
         [r g b] (map find-ansi-offset-cached rgb)]
     (if (< a alpha-threshold)
       :transparent
-      (if (= r g b)
-        (let [avg (/ (reduce + rgb) 3)
-              idx (/ avg (/ 256 (count grayscale)))]
-          (nth grayscale idx))
-        (+ 16 (* 36 r) (* 6 g) b)))))
+      (if true-color
+        (str/join ";" rgb)
+        (if (= r g b)
+          (let [avg (/ (reduce + rgb) 3)
+                idx (/ avg (/ 256 (count grayscale)))]
+            (nth grayscale idx))
+          (+ 16 (* 36 r) (* 6 g) b))))))
 
 (defn- as-rgba-vec
   "Interpretes TYPE_INT_ARGB color model"
@@ -66,16 +70,19 @@
   (map #(bit-and (bit-shift-right argb %) 0xff) [16 8 0 24]))
 
 (def ^:private ansi-prefix (str (char 27) "["))
+(def ^:private ansi-clear (str ansi-prefix "m"))
+(def ^:dynamic *fg* "38;5;")
+(def ^:dynamic *bg* "48;5;")
 (defn- with-ansi
   "Prepends string with 256-color ANSI code"
   [string & [fg bg]]
   (str
     ansi-prefix
     (if (and fg (= fg bg) (not= :transparent fg))
-      (str "48;5;" bg)
-      (str (when fg (if (= :transparent fg) "39" (str "38;5;" fg)))
+      (str *bg* bg)
+      (str (when fg (if (= :transparent fg) "39" (str *fg* fg)))
            (when (and fg bg) ";")
-           (when bg (if (= :transparent bg) "49" (str "48;5;" bg)))))
+           (when bg (if (= :transparent bg) "49" (str *bg* bg)))))
     "m" string))
 
 ;; http://en.wikipedia.org/wiki/Block_Elements
@@ -101,13 +108,17 @@
         :else (fun chr bot top))
       (fun chr bot top))))
 
-(defn- img->str [^BufferedImage img]
+(defn- img->str [^BufferedImage img
+                 true-color]
   (let [out    (java.io.StringWriter.)
         width  (.getWidth img)
         height (.getHeight img)
-        ->ansi (comp rgba-to-ansi as-rgba-vec
+        ->ansi (comp (partial rgba-to-ansi true-color)
+                     as-rgba-vec
                      (fn [^BufferedImage img x y] (.getRGB img x y)))]
-    (binding [*out* out]
+    (binding [*out* out
+              *fg* (if true-color "38;2;" "38;5;")
+              *bg* (if true-color "48;2;" "48;5;")]
       (loop [ys (range height)]
         (when-let [y (first ys)]
           (loop [xs (range width)
@@ -121,7 +132,7 @@
                     new-ch (char-for new-ct new-cb)]
                 (print (cell->str new-ch new-ct new-cb ch ct cb))
                 (recur (rest xs) new-ch new-ct new-cb))))
-          (println (with-ansi ""))
+          (println ansi-clear)
           (recur (rest (rest ys)))))
       (str out))))
 
@@ -161,5 +172,7 @@
                       (filter some?))]
       (if (empty? images) (print-exit 1 "No valid image files given"))
       (doseq [img images]
-        (print (img->str (resize-image img width height))))
+        (print (img->str
+                 (resize-image img width height)
+                 (:24 options))))
       (flush))))
