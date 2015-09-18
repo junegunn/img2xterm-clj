@@ -48,21 +48,31 @@
 
 (def ^:private grayscale (conj (vec (range 232 256)) 231))
 (def ^:private alpha-threshold 64) ; FIXME
+
+(defn round-error [rgb indexes]
+  (let [rounded (map #(nth color-offsets %) indexes)
+        pairs   (map vector rgb rounded)]
+    (reduce + (map #(Math/abs (apply - %)) pairs))))
+
 (defn rgba-to-ansi
   "Converts RGB color to 256-color ANSI code"
   [true-color rgba]
   (let [rgb (butlast rgba)
-        a   (last rgba)
-        [r g b] (map find-ansi-offset-cached rgb)]
+        a   (last rgba)]
     (if (< a alpha-threshold)
       :transparent
       (if true-color
         (str/join ";" rgb)
-        (if (= r g b)
-          (let [avg (/ (reduce + rgb) 3)
-                idx (/ avg (/ 256 (count grayscale)))]
-            (nth grayscale idx))
-          (+ 16 (* 36 r) (* 6 g) b))))))
+        (let [rgbi (map find-ansi-offset-cached rgb)
+              avg  (/ (reduce + rgb) 3)
+              step (/ 256 (count grayscale))
+              idx  (Math/round (double (/ avg step)))
+              avg  (int (* step idx))]
+          (if (< (round-error rgb rgbi)
+                 (reduce + (map #(Math/abs (- avg %)) rgb)))
+            (let [[ri gi bi] rgbi]
+              (+ 16 (* 36 ri) (* 6 gi) bi))
+            (nth grayscale idx)))))))
 
 (defn- as-rgba-vec
   "Interpretes TYPE_INT_ARGB color model"
